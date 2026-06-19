@@ -508,13 +508,18 @@ cmd_down() {
   local pid=$(daemon_pid)
   echo -n "Stopping agent (PID: $pid)... "
 
-  if $force; then
+  # taskkill the specific PID (Windows)
+  if [ -n "$pid" ]; then
     taskkill //F //PID "$pid" 2>/dev/null || true
-  else
-    taskkill //PID "$pid" 2>/dev/null || true
+  fi
+  # Fallback: kill any remaining bun processes for this project
+  # (safety — prevents zombie daemons from accumulating)
+  sleep 1
+  if tasklist 2>/dev/null | grep -q "bun.exe"; then
+    taskkill //F //IM bun.exe 2>/dev/null || true
+    sleep 1
   fi
 
-  sleep 2
   rm -f "$CLAW_DIR/daemon.pid"
   green "✓ Stopped"
 }
