@@ -96,6 +96,25 @@ is_daemon_alive() {
   return 1
 }
 
+is_port_in_use() {
+  local port="$1"
+  cmd.exe /c "netstat -ano | findstr :$port " 2>/dev/null | grep -q "LISTENING" 2>/dev/null
+}
+
+find_free_port() {
+  local start_port="${1:-4632}"
+  local port=$start_port
+  local max=$((start_port + 20))
+  while [ $port -le $max ]; do
+    if ! is_port_in_use $port; then
+      echo $port
+      return 0
+    fi
+    port=$((port + 1))
+  done
+  return 1
+}
+
 # ----- Bot Rename -----
 
 compute_bot_name() {
@@ -425,12 +444,28 @@ cmd_up() {
   # 2. Clean stale PID
   rm -f "$CLAW_DIR/daemon.pid"
 
-  # 3. Start daemon
+  # 3. Check port and auto-select if needed
+  local preferred_port="${web_port:-$(read_port)}"
+  preferred_port="${preferred_port:-4632}"
+
+  if is_port_in_use "$preferred_port"; then
+    yellow "⚠ Port $preferred_port in use, finding free port..."
+    local free_port=$(find_free_port "$preferred_port")
+    if [ -z "$free_port" ]; then
+      red "✗ No free ports in range $preferred_port-$((preferred_port + 20))"
+      exit 1
+    fi
+    green "  → Using port $free_port"
+    # Update settings.json with new port
+    sed -i "s/\"port\": [0-9]*/\"port\": $free_port/" "$SETTINGS_FILE" 2>/dev/null || true
+  else
+    local free_port="$preferred_port"
+  fi
+
+  # 4. Start daemon
   local extra_args=""
   $web_flag && extra_args="--web"
-  if [ -n "$web_port" ]; then
-    extra_args="$extra_args --web-port $web_port"
-  fi
+  extra_args="$extra_args --web-port $free_port"
 
   echo -n "Starting daemon... "
   nohup "$BUN_EXE" run "${CLAUDE_PLUGIN_ROOT}/src/index.ts" start $extra_args \
