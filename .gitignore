@@ -1,0 +1,17 @@
+# ClawHawk — ignore secrets and runtime artifacts
+.env
+.claude/
+.claude/claudeclaw/session.json
+.claude/claudeclaw/daemon.pid
+.claude/claudeclaw/state.json
+.claude/claudeclaw/active-runs
+.claude/claudeclaw/web.token
+.claude/claudeclaw/logs/
+.claude/claudeclaw/sessions.json
+.claude/claudeclaw/whisper/
+.claude/claudeclaw/history/
+.claude/claudeclaw/summaries/
+.claude/claudeclaw/jobs/
+.claude/claudeclaw/fallback-sessions/
+node_modules/
+*.log
